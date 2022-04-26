@@ -6,7 +6,6 @@ __originalauthor__ = 'David Nahmias'
 __credits__ = ['David Nahmias']
 __maintainer__ = 'Mohamed Radwan'
 
-import logging
 import time
 from copy import copy
 import sys
@@ -14,6 +13,7 @@ import sys
 from collections import Counter
 import random
 import numpy as np
+from tqdm import tqdm
 from numpy.random import RandomState
 import resampy
 from torch import optim
@@ -36,6 +36,8 @@ from braindecode.datautil.iterators import get_balanced_batches
 from braindecode.torch_ext.constraints import MaxNormDefaultConstraint
 from braindecode.torch_ext.util import var_to_np
 from braindecode.torch_ext.functions import identity
+
+from dataset import DiagnosisSet
 
 
 def splitDataRandom(allData,allLabels,setNum=0,shuffle=0):

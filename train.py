@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 
 from models import build_model
 from add_noise import addDataNoise
-rng = RandomState((2018,8,7))
+from numpy.random import RandomState
 
 
 def evaluate(model, X, y, config, loss_func, eval=False, squeeze=False):
@@ -13,6 +13,7 @@ def evaluate(model, X, y, config, loss_func, eval=False, squeeze=False):
     model.eval()
     accuracies = []
     losses = []
+    rng = RandomState((2022,4,20))
     i_trials_in_batch = get_balanced_batches(len(X), rng, 
                                              shuffle=True, 
                                              batch_size=config.batch_size)
@@ -51,6 +52,7 @@ def train(config, model, optimizer, trainX, trainy,
           validX, validy, loss_func, squeeze=False):
     valid_accuracies = []
     train_accuracies = []
+    rng = RandomState((2022,4,20))
     for i_epoch in range(1, config.max_epochs):
         i_trials_in_batch = get_balanced_batches(len(trainX), rng, 
                                                  shuffle=True,

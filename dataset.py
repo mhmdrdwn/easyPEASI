@@ -6,6 +6,9 @@ import glob
 import os.path
 import mne
 
+from tqdm import tqdm
+
+
 def session_key(file_name):
     """ sort the file name by session """
     return re.findall(r'(s\d{2})', file_name)
