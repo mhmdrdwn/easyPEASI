@@ -225,7 +225,7 @@ def build_model(config):
         split_first_layer = True
         n_chan_factor = n_filters_factor
         n_start_chans = n_filters_start
-        model = Deep4Net(config.n_chans, n_classes,
+        model = Deep4Net(config.n_chans, config.n_classes,
                  n_filters_time=n_start_chans,
                  n_filters_spat=n_start_chans,
                  input_time_length=config.input_time_length,
@@ -264,7 +264,7 @@ def build_model(config):
         pool_time_length = 84
         pool_time_stride = 3
         split_first_layer = True
-        model = ShallowFBCSPNet(in_chans=config.n_chans, n_classes=n_classes,
+        model = ShallowFBCSPNet(in_chans=config.n_chans, n_classes=config.n_classes,
                                 n_filters_time=n_filters_time,
                                 n_filters_spat=n_filters_spat,
                                 input_time_length=input_time_length,
@@ -282,7 +282,7 @@ def build_model(config):
     elif config.model_name == 'linear':
         model = nn.Sequential()
         model.add_module("conv_classifier",
-                         nn.Conv2d(config.n_chans, n_classes, (600,1)))
+                         nn.Conv2d(config.n_chans, config.n_classes, (600,1)))
         model.add_module('softmax', nn.LogSoftmax(dim=1))
         model.add_module('squeeze', Expression(lambda x: x.squeeze(3)))
         #assert False, "unknown model name {:s}".format(model_name)
@@ -366,7 +366,6 @@ def run_exp(config):
     del X,y # shouldn't be necessary, but just to make sure
 
     set_random_seeds(seed=20170629, cuda=config.cuda)
-    n_classes = 2
     
     model = build_model(config)
         
@@ -407,7 +406,7 @@ def run_exp(config):
                      remember_best_column='valid_misclass',
                      run_after_early_stop=run_after_early_stop,
                      batch_modifier=batch_modifier,
-                     cuda=cuda)
+                     cuda=config.cuda)
     
     exp.run()
     return exp

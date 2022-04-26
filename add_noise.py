@@ -1,14 +1,11 @@
-
 """in the original implimentation, the author start a new array as zeros,
 and then add perturbations to the zeros array, to show the spectral importance.
 Here, we use the same original data nad only perturb the required spectrum 
 one at a time"""
-
-import numpy as np
 from scipy import fftpack
 import copy
 
-def addDataNoise(origSignals,band=[],channels=[],srate=100, zeroing=False):
+def addDataNoise(origSignals,band=[],channels=[],srate=100, band_cut=False):
     np.random.seed(seed=404)
     signals = copy.deepcopy(origSignals)
 
@@ -61,7 +58,7 @@ def addDataNoise(origSignals,band=[],channels=[],srate=100, zeroing=False):
                     freqDomNoise = np.random.normal(np.mean(cleanDFT), 
                                                     np.std(cleanDFT), 
                                                     size=len(cleanDFT))
-                    if zeroing:
+                    if band_cut:
                         dataDFT_output[lowHz:highHz] =  0 #no signal in this frequency
                     else:
                         dataDFT_output[lowHz:highHz] = freqDomNoise #freqDomNoise

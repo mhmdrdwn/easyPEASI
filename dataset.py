@@ -1,13 +1,10 @@
-import logging
+"""The functions here are modified after the original repository"""
+
 import re
 import numpy as np
 import glob
 import os.path
-
 import mne
-
-log = logging.getLogger(__name__)
-
 
 def session_key(file_name):
     """ sort the file name by session """
@@ -92,28 +89,20 @@ def get_recording_length(file_path):
 
 def load_data(fname, preproc_functions, sensor_types=['EEG']):
     cnt, sfreq, n_samples, n_channels, chan_names, n_sec = get_info_with_mne(fname)
-    log.info("Load data...")
     cnt.load_data()
     selected_ch_names = []
-    if 'EEG' in sensor_types:
-        wanted_elecs = ['A1', 'A2', 'C3', 'C4', 'CZ', 'F3', 'F4', 'F7', 'F8', 'FP1',
-                        'FP2', 'FZ', 'O1', 'O2',
-                        'P3', 'P4', 'PZ', 'T3', 'T4', 'T5', 'T6']
+    
+    wanted_elecs = ['A1', 'A2', 'C3', 'C4', 'CZ', 'F3', 'F4', 'F7', 'F8', 'FP1',
+                    'FP2', 'FZ', 'O1', 'O2',
+                    'P3', 'P4', 'PZ', 'T3', 'T4', 'T5', 'T6']
 
-        for wanted_part in wanted_elecs:
-            wanted_found_name = []
-            for ch_name in cnt.ch_names:
-                if ' ' + wanted_part + '-' in ch_name:
-                    wanted_found_name.append(ch_name)
-            assert len(wanted_found_name) == 1
-            selected_ch_names.append(wanted_found_name[0])
-    if 'EKG' in sensor_types:
+    for wanted_part in wanted_elecs:
         wanted_found_name = []
         for ch_name in cnt.ch_names:
-            if 'EKG' in ch_name:
+            if ' ' + wanted_part + '-' in ch_name:
                 wanted_found_name.append(ch_name)
-        assert len(wanted_found_name) == 1
         selected_ch_names.append(wanted_found_name[0])
+
 
     cnt = cnt.pick_channels(selected_ch_names)
     n_sensors = 0
@@ -129,9 +118,7 @@ def load_data(fname, preproc_functions, sensor_types=['EEG']):
     # change from volt to mikrovolt
     data = (cnt.get_data() * 1e6).astype(np.float32)
     fs = cnt.info['sfreq']
-    log.info("Preprocessing...")
     for fn in preproc_functions:
-        log.info(fn)
         data, fs = fn(data, fs)
         data = data.astype(np.float32)
         fs = float(fs)
@@ -146,10 +133,8 @@ def get_all_sorted_file_names_and_labels(train_or_eval, folders):
     for dirname, _, filenames in os.walk(folders[1]):
         for filename in filenames:
             all_file_names.append(os.path.join(dirname, filename))       
-    
     labels = ['/abnormal/' in f for f in all_file_names]
     labels = np.array(labels).astype(np.int64)
-    
     return all_file_names, labels
 
 
@@ -184,7 +169,7 @@ class DiagnosisSet(object):
         X = []
         y = []
         n_files = len(cleaned_file_names[:self.n_recordings])
-        for i_fname, fname in enumerate(cleaned_file_names[:self.n_recordings]):
+        for i_fname, fname in enumerate(tqdm(cleaned_file_names[:self.n_recordings])):
             x = load_data(fname, preproc_functions=self.preproc_functions, sensor_types=self.sensor_types)
             assert x is not None
             X.append(x)

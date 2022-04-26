@@ -21,6 +21,7 @@ import torch.nn.functional as F
 import torch as th
 from torch.nn.functional import elu
 from torch import nn
+import torch.backends.cudnn as cudnn
 
 from braindecode.datautil.signal_target import SignalAndTarget
 from braindecode.torch_ext.util import np_to_var
@@ -31,7 +32,6 @@ from braindecode.datautil.iterators import CropsFromTrialsIterator
 from braindecode.experiments.monitors import (RuntimeMonitor, LossMonitor,
                                               MisclassMonitor)
 from braindecode.experiments.stopcriteria import MaxEpochs
-#from braindecode.models.util import to_dense_prediction_model
 from braindecode.datautil.iterators import get_balanced_batches
 from braindecode.torch_ext.constraints import MaxNormDefaultConstraint
 from braindecode.torch_ext.util import var_to_np
@@ -40,7 +40,7 @@ from braindecode.torch_ext.functions import identity
 
 def splitDataRandom(allData,allLabels,setNum=0,shuffle=0):
     numberEqSamples = min(Counter(allLabels).values())
-    trainSamplesNum = int(np.ceil(numberEqSamples*0.9))
+    trainSamplesNum = int(np.ceil(numberEqSamples*0.75))
     testSamplesNum = numberEqSamples-trainSamplesNum
 
     labels0 = allLabels[allLabels == 0]
@@ -83,10 +83,6 @@ class TrainValidTestSplitter(object):
         self.shuffle = shuffle
 
     def split(self, X, y,):
-        if len(X) < self.n_folds:
-            raise ValueError("Less Trials: {:d} than folds: {:d}".format(
-                len(X), self.n_folds
-            ))
         folds = get_balanced_batches(len(X), self.rng, self.shuffle,
                                      n_batches=self.n_folds)
         test_inds = folds[self.i_test_fold]
@@ -101,17 +97,18 @@ class TrainValidTestSplitter(object):
 
 
 class TrainValidSplitter(object):
-    def __init__(self, n_folds, i_valid_fold, shuffle):
+    def __init__(self, n_folds, i_valid_fold):
         self.n_folds = n_folds
         self.i_valid_fold = i_valid_fold
         self.rng = RandomState(404)
-        self.shuffle = shuffle
 
     def split(self, X, y):
-        folds = get_balanced_batches(len(X), self.rng, self.shuffle,
-                                     n_batches=self.n_folds)
-        valid_inds = folds[self.i_valid_fold]
+        #folds = get_balanced_batches(len(X), self.rng, n_batches=self.n_folds)
+        #valid_inds = folds[self.i_valid_fold]
         all_inds = list(range(len(X)))
+        valid_size = int(len(X)/self.n_folds)
+        valid_inds = all_inds[self.i_valid_fold*valid_size:
+                              (self.i_valid_fold+1)*valid_size]
         train_inds = np.setdiff1d(all_inds, valid_inds)
         train_set = create_set(X, y, train_inds)
         valid_set = create_set(X, y, valid_inds)
@@ -142,8 +139,6 @@ def preprocess(config):
 
     
 def data_loader(config):
-    
-    import torch.backends.cudnn as cudnn
     cudnn.benchmark = True
     
     preproc_functions = preprocess(config)
@@ -169,19 +164,22 @@ def data_loader(config):
 
     data, labels = dataset.load()
     X,y,test_X,test_y = splitDataRandom(data, labels,shuffle=0)
+    x_y = list(zip(X, y))
+    random.shuffle(x_y)
+    X, y = zip(*x_y)
+    X, y = np.array(list(X)), np.array(list(y))
+
+    return X,y,test_X,test_y
     
+def split(config, X, y, test_X,test_y, i_valid_fold):
     if config.test_on_eval:
         max_shape = np.max([list(x.shape) for x in test_X], axis=0)
-    if not config.test_on_eval:
-        splitter = TrainValidTestSplitter(config.n_folds, config.i_test_fold,
-                                          shuffle=config.shuffle)
-        train_set, valid_set, test_set = splitter.split(X, y)
-        
-    else:
-        splitter = TrainValidSplitter(config.n_folds, i_valid_fold=config.i_test_fold,
-                                          shuffle=config.shuffle)
+
+        splitter = TrainValidSplitter(config.n_folds, i_valid_fold=i_valid_fold)
         train_set, valid_set = splitter.split(X, y)
         test_set = SignalAndTarget(test_X, test_y)
+    else:
+        splitter = TrainValidTestSplitter(config.n_folds, i_valid_fold=i_valid_fold)
+        train_set, valid_set, test_set = splitter.split(X, y)
         
     return train_set, valid_set, test_set
-
